@@ -101,7 +101,7 @@ var drawMultiChart = (datum, titleX, titleY) => {
     var graphWidth = width - 200;
 
     var maxX = d3.max(datum.map(arr => d3.max(arr.value.map(el => el.count))));
-    var allDests = [...new Set(datum.map(el => el.value.map(el2 => el2.dest)).reduce((arr, els) => arr.concat(els)))];
+    var allDests = [...new Set(datum.map(el => el.value.map(el2 => el2.dest)).reduce((arr, els) => arr.concat(els)))].sort(d3.ascending);
     console.log("allDests:", allDests);
 
     var y0 = d3.scaleBand()
@@ -126,7 +126,7 @@ var drawMultiChart = (datum, titleX, titleY) => {
 
     var colorMap = {};
     allDests.forEach(dest => {
-        colorMap[dest] = z(allDests.indexOf(dest))
+        colorMap[dest] = z((allDests.length - 1) - allDests.indexOf(dest))
     });
 
     console.log("colorMap:", colorMap);
@@ -241,8 +241,9 @@ var drawChart2 = (inputData, selectedYear) => {
         })
         .entries(mappedData);
 
+    nest1.sort((a,b)=> d3.ascending(a.key, b.key));
     console.log("nest1: ", nest1, selectedYear);
-
+    
     drawMultiChart(nest1, "# Refugees", "# Origin Country");
 };
 
