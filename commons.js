@@ -2,7 +2,7 @@
 
 var identity = (arg1) => (arg1);
 var barName = (data) => ((data.key.length > 25) ? (data.key.slice(0, 25) + "...") : data.key);
-
+var t = d3.transition().duration(750);
 
 //statics
 const marginBetweenGroups = 6,
@@ -16,15 +16,20 @@ var drawChart = (data, titleX, titleY) => {
     var graphWidth = width - 200;
     var height = topPadding + graphHeight;
 
-    var chart = d3.select(".svg-chart")
+    var svgEl = d3.select(".svg-chart")
         .attr("width", width)
         .attr("height", height);
 
-    var bar = chart.selectAll("g")
-        .data(data)
-        .enter()
-        .append("g")
-        .attr("transform", (d, i) => ("translate(0," + (i * barHeight + topPadding + 5) + ")"));
+    // var barGroup = svgEl.selectAll("g");
+
+    svgEl.selectAll("g").remove();
+    svgEl.selectAll("text").remove();
+    // barGroup.remove();
+
+    var barGroup = svgEl.selectAll("g")
+        .data(data).enter();
+    
+    barGroup.selectAll("rect").remove();
 
     var x = d3.scaleLinear()
         .domain([0, d3.max(data.map(b => b.value))])
@@ -40,42 +45,43 @@ var drawChart = (data, titleX, titleY) => {
         .scale(y);
 
     var normalize = (a) => (x(a.value));
-
-    bar.append("text")
+    
+    var barNameEl = barGroup
+        .append("text")
         .attr("x", 150)
-        .attr("y", barHeight / 2)
+        .attr("y", (d, i) => ((i * barHeight + topPadding + 5) + (barHeight / 2)))
         .attr("dy", ".35em")
         .attr("text-anchor", "end")
         .attr("style", "font-size: 10px")
         .text(barName);
 
-    bar.append("rect")
+    var barRectEl = barGroup
+        .append("rect")
         .attr("x", 170)
+        .attr("y", (d, i) => ((i * barHeight + topPadding + 5)))
         .attr("width", normalize)
         .attr("fill", "#3386FF")
         .attr("height", barHeight - 5);
 
-    chart.append("g")
+    svgEl.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(" + 170 + "," + (height - 50) + ")")
         .call(xAxis);
 
-    chart.append("text")
+    svgEl.append("text")
         .attr("y", 25)
         .attr("x", 170)
         .attr("dy", ".71em")
         .style("text-anchor", "end")
         .text(titleY);
 
-    chart.append("text")
+    svgEl.append("text")
         .attr("y", height - 20)
         .attr("x", width - 10)
         .attr("dy", ".71em")
         .style("text-anchor", "end")
         .text(titleX);
 
-    chart.exit().remove();
-    bar.exit().remove();
 }
 
 var drawMultiChart = (datum, titleX, titleY) => {
@@ -95,7 +101,10 @@ var drawMultiChart = (datum, titleX, titleY) => {
     var svg = d3.select(".svg-chart-2")
         .attr("width", width)
         .attr("height", height-80);
-    
+
+    svg.selectAll("g").remove();
+    svg.selectAll("text").remove();
+
     var g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
     
     var graphWidth = width - 200;
@@ -132,10 +141,11 @@ var drawMultiChart = (datum, titleX, titleY) => {
     console.log("colorMap:", colorMap);
     // y0.domain(datum.map((d) => (d.key)));
 
-    var group1 = g.append("g")
+    var group0 = g
         .selectAll("g")
-        .data(datum)
-        .enter()
+        .data(datum, d => d)
+
+    var group1 = group0.enter()
         .append("g")
         .attr("transform", (d, i) => "translate(0," + i * (groupHeight + marginBetweenGroups) + ")")
 
@@ -147,29 +157,36 @@ var drawMultiChart = (datum, titleX, titleY) => {
         .text(barName);
 
     var rects = group1.selectAll("rect")
-        .data((d) => d.value)
-        .enter().append("rect")
+        .data((d) => d.value);
+
+    rects.attr("class", "update")
+        .attr("y", 0)
+        .style("fill-opacity", 1)
+        .transition(t)
+        .attr("x", function(d, i) { return i * 32; });
+
+    rects.enter().append("rect")
         .attr("x", 0)
         .attr("y", (d, index) => (index * (barHeight + marginBetweenBars)))
-        .attr("width", (el) => x(el.count))
+        .attr("width", (el) => x(el.count?el.count:0))
         .attr("height", barHeight)
         .attr("fill", (d) => colorMap[d.dest])
 
-    svg.append("text")
+    var titleYEl = svg.append("text")
         .attr("y", 3)
         .attr("x", 170)
         .attr("dy", ".71em")
         .style("text-anchor", "end")
         .text(titleY);
 
-    svg.append("text")
+    var titleXEl = svg.append("text")
         .attr("y", height-100)
         .attr("x", width-100)
         .attr("dy", ".71em")
         .style("text-anchor", "start")
         .text(titleX);
 
-    svg.append("g")
+    var xAxisEl = svg.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(" + 170 + "," + (graphHeight-50) + ")")
         .call(xAxis);
@@ -177,23 +194,21 @@ var drawMultiChart = (datum, titleX, titleY) => {
     var legend = svg.append("g")
         .selectAll("g")
         .data(allDests)
+            
+    var legendColors = legend
         .enter()
-        
-    var legendColors = legend.append("rect")
+        .append("rect")
         .attr("width", 15)
         .attr("height", 15)
         .attr("x",750)
         .attr("y",(d, index) =>( 50 + index * 20))
         .attr("fill", (d) => colorMap[d])
         
-    var legendText = legend.append("text")
+    var legendText = legend.enter()
+        .append("text")
         .attr("x",770)
         .attr("y",(d, index) =>( 64 + index * 20))
         .text(d=>d)
-
-    rects.exit().remove();
-    group1.exit().remove();
-    svg.exit().remove();
 
 }
 
@@ -207,7 +222,6 @@ var drawChart1 = (inputData, selectedYear) => {
             count: Number(d["Total Population"])
         }))
         .filter(a => (a.year === selectedYear));
-    // console.log("yearSpecificData: ", yearSpecificData);
 
     var data = d3.nest()
         .key((d) => (d.origin))
@@ -216,8 +230,6 @@ var drawChart1 = (inputData, selectedYear) => {
                 (d) => (d.count)))
         )
         .entries(yearSpecificData);
-
-    // console.log("data: ", data);
 
     drawChart(data, "# Refugees", "# Origin Country");
 };
@@ -239,7 +251,8 @@ var drawChart2 = (inputData, selectedYear) => {
                 .sort((a, b) => (b.count - a.count))
                 .slice(0, 5);
         })
-        .entries(mappedData);
+        .entries(mappedData)
+        .slice(0,5);
 
     nest1.sort((a,b)=> d3.ascending(a.key, b.key));
     console.log("nest1: ", nest1, selectedYear);
